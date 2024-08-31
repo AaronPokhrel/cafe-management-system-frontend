@@ -158,6 +158,7 @@ export class ManageOrderComponent implements OnInit {
       return false;
     }
   }
+
   validateSubmit() {
     if (
       this.totalAmount === 0 ||
@@ -203,6 +204,7 @@ export class ManageOrderComponent implements OnInit {
     this.dataSource.splice(value, 1);
     this.dataSource = [...this.dataSource];
   }
+
   submitAction() {
     this.ngxService.start();
     var formData = this.manageOrderForm.value;
@@ -214,8 +216,12 @@ export class ManageOrderComponent implements OnInit {
       totalAmount: this.totalAmount,
       productDetails: JSON.stringify(this.dataSource),
     };
+
+    console.log(data, 'data');
     this.billService.generateReport(data).subscribe(
       (response: any) => {
+        console.log(response);
+        this.ngxService.stop();
         this.downloadFile(response?.uuid);
         this.manageOrderForm.reset();
         this.dataSource = [];
@@ -235,12 +241,15 @@ export class ManageOrderComponent implements OnInit {
       }
     );
   }
+
   downloadFile(fileName: any) {
     var data = {
       uuid: fileName,
     };
+    console.log(data, 'download data uuid');
     this.billService.getPDF(data).subscribe((response: any) => {
-      saveAs(response, fileName + 'pdf');
+      saveAs(response, fileName + '.pdf');
+      console.log(response, 'this is response message in download file');
       this.ngxService.stop();
     });
   }

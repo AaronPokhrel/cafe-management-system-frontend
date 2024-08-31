@@ -3,51 +3,57 @@ import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatTableDataSource } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { NgxUiLoaderService } from 'ngx-ui-loader';
-import { ProductService } from 'src/app/services/product.service';
+import { BillService } from 'src/app/services/bill.service';
 import { SnackbarService } from 'src/app/services/snackbar.service';
 import { GlobalConstants } from 'src/app/shared/global-constant';
-import { ProductComponent } from '../dialog/product/product.component';
+import { ViewBillProductsComponent } from '../dialog/view-bill-products/view-bill-products.component';
+import { ProductService } from 'src/app/services/product.service';
 import { ConfirmationComponent } from '../dialog/confirmation/confirmation.component';
+import { saveAs } from 'file-saver';
 
 @Component({
-  selector: 'app-manage-product',
-  templateUrl: './manage-product.component.html',
-  styleUrls: ['./manage-product.component.scss'],
+  selector: 'app-view-bill',
+  templateUrl: './view-bill.component.html',
+  styleUrls: ['./view-bill.component.scss'],
 })
-export class ManageProductComponent implements OnInit {
+export class ViewBillComponent implements OnInit {
   displayedColumns: string[] = [
     'name',
-    'categoryName',
-    'description',
-    'price',
-    'edit',
+    'email',
+    'contactNumber',
+    'paymentMethod',
+    'total',
+    'view',
   ];
-  
+
   dataSource: any;
   responseMessage: any;
 
   constructor(
-    private productService: ProductService,
+    private billService: BillService,
     private ngxService: NgxUiLoaderService,
     private dialog: MatDialog,
     private snackbarService: SnackbarService,
-    private router: Router
+    private router: Router,
+    private productService: ProductService
   ) {}
 
   ngOnInit(): void {
-    this.ngxService.stop();
+    this.ngxService.start();
     this.tableData();
   }
 
   tableData() {
-    this.productService.getProduct().subscribe(
+    this.billService.getBills().subscribe(
       (response: any) => {
         this.ngxService.stop();
+        console.log(response, 'res source');
+
         this.dataSource = new MatTableDataSource(response);
+        console.log(this.dataSource, 'data source');
       },
       (error: any) => {
         this.ngxService.stop();
-        console.log(error);
         if (error.error?.message) {
           this.responseMessage = error.error?.message;
         } else {
@@ -55,8 +61,7 @@ export class ManageProductComponent implements OnInit {
         }
         this.snackbarService.openSnackBar(
           this.responseMessage,
-          GlobalConstants,
-          error
+          GlobalConstants.error
         );
       }
     );
@@ -66,51 +71,48 @@ export class ManageProductComponent implements OnInit {
     const filterValue = (event.target as HTMLInputElement).value;
     this.dataSource.filter = filterValue.trim().toLowerCase();
   }
-  handleAddAction() {
-    // USE to config data
-    const dialogConfig = new MatDialogConfig();
-    dialogConfig.data = {
-      action: 'Add',
-    };
-    dialogConfig.width = '850px';
-    const dialogRef = this.dialog.open(ProductComponent, dialogConfig);
-    this.router.events.subscribe(() => {
-      dialogRef.close();
-    });
-    const sub = dialogRef.componentInstance.onAddProduct.subscribe(
-      (response) => {
-        this.tableData();
-      }
-    );
-  }
 
-  handleEditAction(values: any) {
+  handleViewAction(values: any) {
     const dialogConfig = new MatDialogConfig();
     dialogConfig.data = {
-      action: 'Edit',
       data: values,
     };
-    dialogConfig.width = '850px';
-    const dialogRef = this.dialog.open(ProductComponent, dialogConfig);
+    dialogConfig.width = '100%';
+    const dialogRef = this.dialog.open(ViewBillProductsComponent, dialogConfig);
     this.router.events.subscribe(() => {
       dialogRef.close();
     });
-    const sub = dialogRef.componentInstance.onEditProduct.subscribe(
-      (response) => {
-        this.tableData();
-      }
-    );
+  }
+
+  downloadReportAction(values: any) {
+    this.ngxService.start();
+    var data = {
+      name: values.name,
+      email: values.email,
+      uuid: values.uuid,
+      contactNumber: values.contactNumber,
+      paymentMethod: values.paymentMethod,
+      totalAmount: values.totalAmount,
+      productDetails: values.productDetails,
+    };
+    console.log(data);
+    this.billService.getPDF(data).subscribe((response) => {
+      console.log(response, 'response');
+      console.log(data, 'data');
+      console.log(values.uuid);
+      saveAs(response, values.uuid + '.pdf');
+      this.ngxService.stop();
+    });
   }
 
   handleDeleteAction(values: any) {
     const dialogConfig = new MatDialogConfig();
     dialogConfig.data = {
-      message: 'delete' + values.name + 'product',
+      message: 'delete ' + values.name + ' bill',
     };
     const dialogRef = this.dialog.open(ConfirmationComponent, dialogConfig);
     const sub = dialogRef.componentInstance.onEmitStatusChange.subscribe(
       (response) => {
-        this.ngxService.start();
         this.deleteProduct(values.id);
         dialogRef.close();
       }
@@ -118,8 +120,7 @@ export class ManageProductComponent implements OnInit {
   }
 
   deleteProduct(id: any) {
-    console.log(id);
-    this.productService.delete(id).subscribe(
+    this.billService.delete(id).subscribe(
       (response: any) => {
         this.ngxService.stop();
         this.tableData();
@@ -128,7 +129,6 @@ export class ManageProductComponent implements OnInit {
       },
       (error: any) => {
         this.ngxService.stop();
-        console.log(error);
         if (error.error?.message) {
           this.responseMessage = error.error?.message;
         } else {
@@ -136,36 +136,7 @@ export class ManageProductComponent implements OnInit {
         }
         this.snackbarService.openSnackBar(
           this.responseMessage,
-          GlobalConstants,
-          error
-        );
-      }
-    );
-  }
-
-  onChange(status: any, id: any) {
-    var data = {
-      status: status.toString(),
-      id: id,
-    };
-    this.productService.updateStatus(data).subscribe(
-      (response: any) => {
-        this.ngxService.stop();
-        this.responseMessage = response?.message;
-        this.snackbarService.openSnackBar(this.responseMessage, 'Sucess');
-      },
-      (error: any) => {
-        this.ngxService.stop();
-        console.log(error);
-        if (error.error?.message) {
-          this.responseMessage = error.error?.message;
-        } else {
-          this.responseMessage = GlobalConstants.genericError;
-        }
-        this.snackbarService.openSnackBar(
-          this.responseMessage,
-          GlobalConstants,
-          error
+          GlobalConstants.error
         );
       }
     );
