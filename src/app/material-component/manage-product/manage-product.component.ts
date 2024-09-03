@@ -22,7 +22,7 @@ export class ManageProductComponent implements OnInit {
     'price',
     'edit',
   ];
-  
+
   dataSource: any;
   responseMessage: any;
 
@@ -144,6 +144,7 @@ export class ManageProductComponent implements OnInit {
   }
 
   onChange(status: any, id: any) {
+    this.ngxService.start();
     var data = {
       status: status.toString(),
       id: id,

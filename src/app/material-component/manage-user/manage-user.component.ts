@@ -58,13 +58,18 @@ export class ManageUserComponent implements OnInit {
       status: status.toString(),
       id: id,
     };
+    console.log(data, 'data');
+
     this.userService.update(data).subscribe(
       (response: any) => {
+        console.log(response, 'resp');
         this.ngxService.stop();
         this.responseMessage = response?.message;
         this.snackbarService.openSnackBar(this.responseMessage, 'Sucess');
       },
       (error: any) => {
+        console.log(error, 'error');
+
         this.ngxService.stop();
         if (error.error?.message) {
           this.responseMessage = error.error?.message;
